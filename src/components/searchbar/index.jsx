@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import styles from './searchBar.module.css';
 import { ImSearch } from 'react-icons/im';
+import PropTypes from 'prop-types';
 
 class SearchBar extends Component {
   state = {
@@ -17,7 +18,6 @@ class SearchBar extends Component {
     }
     e.preventDefault();
     this.props.onSubmit(this.state.serchQuery);
-    this.setState({ serchQuery: '' });
   };
   render() {
     const { serchQuery } = this.state;
@@ -43,4 +43,7 @@ class SearchBar extends Component {
   }
 }
 
+SearchBar.propTypes = {
+  onSubmit: PropTypes.func.isRequired,
+};
 export default SearchBar;
