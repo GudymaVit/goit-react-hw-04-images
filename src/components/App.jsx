@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import ApiReuest from '../api';
 import SearchBar from './searchbar';
 import Loader from './loader';
@@ -7,115 +7,97 @@ import Button from './button';
 import Modal from './modal';
 import * as Scroll from 'react-scroll';
 
-class App extends Component {
-  state = {
-    searchQuery: '',
-    page: 1,
-    images: [],
-    largeImageURL: '',
-    totalImages: 0,
-    tag: '',
-    status: 'idle',
-    isModalShow: false,
-  };
+const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [images, setImages] = useState([]);
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [totalImages, setTotalImages] = useState(0);
+  const [tags, setTags] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [isModalShow, setIsModalShow] = useState(false);
 
-  searchApi = new ApiReuest();
-
-  async componentDidUpdate(prevProps, prevState) {
-    const { searchQuery, page } = this.state;
-
-    if (searchQuery !== prevState.searchQuery || page !== prevState.page) {
-      try {
-        this.setState({ status: 'pending' });
-        await this.searchApi.fetchSearch(page, searchQuery).then(res => {
-          const images = res.data.hits.map(
-            ({ id, webformatURL, largeImageURL, tags }) => ({
-              id,
-              webformatURL,
-              largeImageURL,
-              tags,
-            })
-          );
-          if (images.length === 0) {
-            this.setState({ status: 'rejected' });
-            alert(`Can't find ${searchQuery} images`);
-          } else {
-            this.setState(state => ({
-              images: [...state.images, ...images],
-              status: 'resolve',
-              totalImages: res.data.totalHits,
-            }));
-          }
-        });
-      } catch (error) {
-        alert(error);
-      }
+  useEffect(() => {
+    const searchApi = new ApiReuest();
+    if (searchQuery === '') {
+      return;
     }
-  }
+    try {
+      setStatus('pending');
+      searchApi.fetchSearch(page, searchQuery).then(res => {
+        const images = res.data.hits.map(
+          ({ id, webformatURL, largeImageURL, tags }) => ({
+            id,
+            webformatURL,
+            largeImageURL,
+            tags,
+          })
+        );
+        if (images.length === 0) {
+          setStatus('rejected');
+          alert(`Can't find ${searchQuery} images`);
+        } else {
+          setImages(prevState => [...prevState, ...images]);
+          setStatus('resolve');
+          setTotalImages(res.data.totalHits);
+        }
+      });
+    } catch (error) {
+      alert(error);
+    }
+  }, [page, searchQuery]);
 
-  handleFormSubmt = query => {
-    if (query !== this.state.searchQuery) {
-      this.setState({ searchQuery: query, page: 1, images: [] });
+  const handleFormSubmt = query => {
+    if (query !== searchQuery) {
+      setSearchQuery(query);
+      setPage(1);
+      setImages([]);
     }
   };
-  handleButtonClick = () => {
-    this.setState(state => ({
-      page: state.page + 1,
-    }));
-    if (this.state.status === 'resolve') {
-      this.scrollPage();
+  const handleButtonClick = () => {
+    setPage(prevState => prevState + 1);
+
+    if (status === 'resolve') {
+      scrollPage();
     }
   };
 
-  toggleModal = () => {
-    this.setState(prevState => ({
-      isModalShow: !prevState.isModalShow,
-    }));
+  const toggleModal = () => {
+    setIsModalShow(prevState => !prevState);
   };
 
-  handleImageClick = (largeImageURL, tags) => {
-    this.setState({ largeImageURL, tags });
-    this.toggleModal();
+  const handleImageClick = (largeImageURL, tags) => {
+    setLargeImageURL(largeImageURL);
+    setTags(tags);
+    toggleModal();
   };
-  scrollPage = () => {
+  const scrollPage = () => {
     const element = document.querySelector('#card');
     Scroll.animateScroll.scrollMore(element.offsetHeight * 2, {
       smooth: 'linear',
     });
   };
 
-  render() {
-    const {
-      searchQuery,
-      images,
-      status,
-      largeImageURL,
-      tags,
-      isModalShow,
-      page,
-      totalImages,
-    } = this.state;
+  return (
+    <>
+      <SearchBar onSubmit={handleFormSubmt} />
 
-    return (
-      <>
-        <SearchBar onSubmit={this.handleFormSubmt} />
-        {/* {status === 'idle' && <h2>Enter to search</h2>} */}
-        {status === 'resolve' && images.length > 0 && (
-          <ImageGallery images={images} onClick={this.handleImageClick} />
-        )}
-        {status === 'rejected' && <h3>Could not find photo: {searchQuery}</h3>}
-        {status === 'pending' && <Loader />}
-        {status === 'resolve' && page < Math.ceil(totalImages / 12) && (
-          <Button onClick={this.handleButtonClick} />
-        )}
+      {status === 'resolve' && images.length > 0 && (
+        <ImageGallery images={images} onClick={handleImageClick} />
+      )}
+      {status === 'rejected' && <h3>Could not find photo: {searchQuery}</h3>}
+      {status === 'pending' && <Loader />}
+      {status === 'resolve' && page < Math.ceil(totalImages / 12) && (
+        <Button onClick={handleButtonClick} />
+      )}
 
-        {isModalShow && largeImageURL && (
-          <Modal onClose={this.toggleModal}>
-            <img src={largeImageURL} alt={tags} />
-          </Modal>
-        )}
-      </>
-    );
-  }
-}
+      {isModalShow && largeImageURL && (
+        <Modal onClose={toggleModal}>
+          <img src={largeImageURL} alt={tags} />
+        </Modal>
+      )}
+    </>
+  );
+};
+
 export default App;
